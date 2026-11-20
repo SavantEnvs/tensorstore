@@ -1,0 +1,9 @@
+project: savantenvs/tensorstore
+target: zarr_fuzzer
+testsuite:
+  - https://$MAYHEM_DOMAIN/$MAYHEM_PROJECT/$MAYHEM_TARGET/testsuite.tar
+  - file://mayhem/zarr_fuzzer/testsuite
+cmds:
+  - cmd: /mayhem/mayhem/out/zarr_fuzzer
+    libfuzzer: true
+    timeout: 10

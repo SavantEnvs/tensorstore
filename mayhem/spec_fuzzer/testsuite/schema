@@ -1,0 +1,1 @@
+{"rank": 2, "dtype": "int32", "dimension_units": [[4, "nm"], "2.5s"], "chunk_layout": {"grid_origin": [0, 0], "inner_order": [1, 0], "read_chunk": {"shape": [64, 64]}}}

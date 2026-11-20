@@ -1,0 +1,9 @@
+project: savantenvs/tensorstore
+target: png_fuzzer
+testsuite:
+  - https://$MAYHEM_DOMAIN/$MAYHEM_PROJECT/$MAYHEM_TARGET/testsuite.tar
+  - file://mayhem/png_fuzzer/testsuite
+cmds:
+  - cmd: /mayhem/mayhem/out/png_fuzzer
+    libfuzzer: true
+    timeout: 10

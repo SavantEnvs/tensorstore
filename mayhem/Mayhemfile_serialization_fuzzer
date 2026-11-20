@@ -1,0 +1,9 @@
+project: savantenvs/tensorstore
+target: serialization_fuzzer
+testsuite:
+  - https://$MAYHEM_DOMAIN/$MAYHEM_PROJECT/$MAYHEM_TARGET/testsuite.tar
+  - file://mayhem/serialization_fuzzer/testsuite
+cmds:
+  - cmd: /mayhem/mayhem/out/serialization_fuzzer
+    libfuzzer: true
+    timeout: 10

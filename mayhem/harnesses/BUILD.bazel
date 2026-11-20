@@ -1,0 +1,136 @@
+# mayhem/ layer: libFuzzer harnesses + standalone reproducers for tensorstore.
+load(":fuzz.bzl", "tensorstore_fuzzer")
+
+package(default_visibility = ["//visibility:private"])
+
+cc_library(
+    name = "lsan_off",
+    srcs = ["lsan_off.cc"],
+    alwayslink = True,
+)
+
+# The base image's LLVM run-once driver ($STANDALONE_FUZZ_MAIN), copied here by build.sh.
+cc_library(
+    name = "standalone_main",
+    srcs = ["standalone_main.c"],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "fuzz_common",
+    hdrs = ["fuzz_common.h"],
+    deps = [
+        "//tensorstore",
+        "//tensorstore:context",
+        "//tensorstore:index",
+        "//tensorstore:open",
+        "//tensorstore/index_space:dim_expression",
+        "//tensorstore/kvstore",
+        "//tensorstore/kvstore/memory",
+        "@abseil-cpp//absl/strings:cord",
+        "@nlohmann_json//:json",
+    ],
+)
+
+ARRAY_DRIVERS = {
+    "zarr": "//tensorstore/driver/zarr",
+    "zarr3": "//tensorstore/driver/zarr3",
+    "n5": "//tensorstore/driver/n5",
+    "neuroglancer_precomputed": "//tensorstore/driver/neuroglancer_precomputed",
+}
+
+[tensorstore_fuzzer(
+    name = "%s_fuzzer" % d,
+    srcs = ["array_driver_fuzzer.cc"],
+    defines = ['MAYHEM_DRIVER=\\"%s\\"' % d],
+    deps = [":fuzz_common", ARRAY_DRIVERS[d]],
+) for d in ARRAY_DRIVERS]
+
+[tensorstore_fuzzer(
+    name = "%s_fuzzer" % d,
+    srcs = ["image_driver_fuzzer.cc"],
+    defines = ['MAYHEM_DRIVER=\\"%s\\"' % d],
+    deps = [":fuzz_common", "//tensorstore/driver/image/%s" % d],
+) for d in ["png", "tiff", "bmp", "webp"]]
+
+tensorstore_fuzzer(
+    name = "zip_kvstore_fuzzer",
+    srcs = ["zip_kvstore_fuzzer.cc"],
+    deps = [":fuzz_common", "//tensorstore/kvstore/zip"],
+)
+
+tensorstore_fuzzer(
+    name = "spec_fuzzer",
+    srcs = ["spec_fuzzer.cc"],
+    deps = [
+        ":fuzz_common",
+        "//tensorstore:chunk_layout",
+        "//tensorstore:schema",
+        "//tensorstore:spec",
+        "//tensorstore/driver/array",
+        "//tensorstore/driver/cast",
+        "//tensorstore/driver/downsample",
+        "//tensorstore/driver/n5",
+        "//tensorstore/driver/neuroglancer_precomputed",
+        "//tensorstore/driver/stack",
+        "//tensorstore/driver/zarr",
+        "//tensorstore/driver/zarr3",
+        "//tensorstore/kvstore/zip",
+    ],
+)
+
+# driver: auto — format auto-detection over the stored keys, then the detected driver's
+# Open + Read. Every driver/kvstore the detector can pick is linked in.
+tensorstore_fuzzer(
+    name = "auto_fuzzer",
+    srcs = ["array_driver_fuzzer.cc"],
+    defines = ['MAYHEM_DRIVER=\\"auto\\"'],
+    deps = [":fuzz_common", "//tensorstore/driver/auto"] + ARRAY_DRIVERS.values() + [
+        "//tensorstore/driver/image/%s" % d
+        for d in ["png", "tiff", "bmp", "webp"]
+    ] + ["//tensorstore/kvstore/zip"],
+)
+
+tensorstore_fuzzer(
+    name = "serialization_fuzzer",
+    srcs = ["serialization_fuzzer.cc"],
+    deps = [
+        "//tensorstore",
+        "//tensorstore:array",
+        "//tensorstore:spec",
+        "//tensorstore/driver/array",
+        "//tensorstore/driver/cast",
+        "//tensorstore/driver/downsample",
+        "//tensorstore/driver/n5",
+        "//tensorstore/driver/neuroglancer_precomputed",
+        "//tensorstore/driver/stack",
+        "//tensorstore/driver/zarr",
+        "//tensorstore/driver/zarr3",
+        "//tensorstore/index_space:index_transform",
+        "//tensorstore/kvstore",
+        "//tensorstore/kvstore/memory",
+        "//tensorstore/kvstore/zip",
+        "//tensorstore/serialization",
+        "//tensorstore/serialization:batch",
+    ],
+)
+
+tensorstore_fuzzer(
+    name = "ocdbt_format_fuzzer",
+    srcs = ["ocdbt_format_fuzzer.cc"],
+    deps = [
+        "//tensorstore/kvstore/ocdbt/format",
+        "@abseil-cpp//absl/strings:cord",
+    ],
+)
+
+# Seed generator for serialization_fuzzer / ocdbt_format_fuzzer (run by hand, not shipped).
+cc_binary(
+    name = "seedgen",
+    srcs = ["seedgen.cc"],
+    deps = [
+        ":serialization_fuzzer_lib",
+        "//tensorstore/kvstore/ocdbt/format",
+        "@nlohmann_json//:json",
+    ],
+)
